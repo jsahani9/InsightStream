@@ -53,11 +53,11 @@ All models are served through **Azure AI Foundry**. Tasks are routed based on mo
 | Task                    | Model                    | Provider              |
 |-------------------------|--------------------------|-----------------------|
 | Preference Extraction   | Claude Sonnet            | Azure AI Foundry      |
-| Planning                | GPT-4o                   | Azure OpenAI Service  |
+| Planning                | GPT-5.1o                   | Azure OpenAI Service  |
 | Article Classification  | Llama 3.3 70B            | Azure AI Foundry      |
 | Ranking                 | Llama 3.3 70B            | Azure AI Foundry      |
 | Summarization           | Claude Sonnet            | Azure AI Foundry      |
-| Verification            | GPT-4o                   | Azure OpenAI Service  |
+| Verification            | GPT-5.2o                   | Azure OpenAI Service  |
 | Semantic Deduplication  | Azure OpenAI Embeddings  | Azure OpenAI Service  |
 
 ---
