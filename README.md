@@ -10,7 +10,7 @@ InsightStream automatically ingests articles, removes duplicates, ranks them by 
 
 - **Multi-Agent Workflow** — Specialized agents collaborate across the full pipeline: preference extraction, planning, classification, ranking, summarization, and verification.
 - **Agentic Tool Use** — Agents dynamically call tools to observe state, make decisions, and act — rather than executing a fixed sequence of steps.
-- **Multi-Provider Model Orchestration** — Strategically routes tasks across Claude Sonnet, GPT-4o, and Llama 3.3 70B based on task requirements, all served through Azure AI Foundry.
+- **Multi-Provider Model Orchestration** — Strategically routes tasks across Claude Sonnet, GPT-5.1, GPT-5.2, and Llama 3.3 70B based on task requirements, all served through Azure AI Foundry.
 - **Personalized Digests** — Users define interests in natural language (e.g. *"AI research only, skip startup valuations"*). The system filters and ranks news accordingly.
 - **Semantic Deduplication** — Embedding similarity via Azure OpenAI Embeddings detects duplicate stories across sources and assigns novelty scores.
 - **AI-Generated Insights** — Articles are summarized into bullet points, key technical takeaways, and "why it matters" explanations.
@@ -48,17 +48,17 @@ Delivery Agent ──────────────── [email_tool] [db
 
 ### AI Models
 
-All models are served through **Azure AI Foundry**. Tasks are routed based on model strengths — Claude for writing and instruction following, GPT-4o for reasoning and verification, Llama for high-volume cost-efficient classification.
+All models are served through **Azure AI Foundry**. Tasks are routed based on model strengths — Claude for writing and instruction following, GPT-5.1 for adaptive reasoning and planning, GPT-5.2 for agentic verification and structured outputs, and Llama for high-volume cost-efficient classification.
 
-| Task                    | Model                    | Provider              |
-|-------------------------|--------------------------|-----------------------|
-| Preference Extraction   | Claude Sonnet            | Azure AI Foundry      |
-| Planning                | GPT-5.1o                   | Azure OpenAI Service  |
-| Article Classification  | Llama 3.3 70B            | Azure AI Foundry      |
-| Ranking                 | Llama 3.3 70B            | Azure AI Foundry      |
-| Summarization           | Claude Sonnet            | Azure AI Foundry      |
-| Verification            | GPT-5.2o                   | Azure OpenAI Service  |
-| Semantic Deduplication  | Azure OpenAI Embeddings  | Azure OpenAI Service  |
+| Task                    | Model                   | Provider             |
+|-------------------------|-------------------------|----------------------|
+| Preference Extraction   | Claude Sonnet           | Azure AI Foundry     |
+| Planning                | GPT-5.1                 | Azure OpenAI Service |
+| Article Classification  | Llama 3.3 70B           | Azure AI Foundry     |
+| Ranking                 | Llama 3.3 70B           | Azure AI Foundry     |
+| Summarization           | Claude Sonnet           | Azure AI Foundry     |
+| Verification            | GPT-5.2                 | Azure OpenAI Service |
+| Semantic Deduplication  | Azure OpenAI Embeddings | Azure OpenAI Service |
 
 ---
 
@@ -107,17 +107,17 @@ If the Verification Agent detects inaccuracies or hallucinated content in a summ
 
 ## Tech Stack
 
-| Layer          | Technology                                                                 |
-|----------------|----------------------------------------------------------------------------|
-| Orchestration  | LangGraph                                                                  |
-| Retrieval      | LlamaIndex                                                                 |
-| Models         | Azure AI Foundry (Claude Sonnet, Llama 3.3 70B), Azure OpenAI (GPT-4o, Embeddings) |
-| Backend        | FastAPI                                                                    |
-| Database       | Azure Database for PostgreSQL                                              |
-| Deployment     | Azure Container Apps, Azure Container Registry                             |
-| Security       | Azure Key Vault, Azure Managed Identity                                    |
-| Monitoring     | Azure Monitor, Application Insights                                        |
-| Infrastructure | Docker, Azure                                                              |
+| Layer          | Technology                                                                          |
+|----------------|-------------------------------------------------------------------------------------|
+| Orchestration  | LangGraph                                                                           |
+| Retrieval      | LlamaIndex                                                                          |
+| Models         | Azure AI Foundry (Claude Sonnet, Llama 3.3 70B), Azure OpenAI (GPT-5.1, GPT-5.2, Embeddings) |
+| Backend        | FastAPI                                                                             |
+| Database       | Azure Database for PostgreSQL                                                       |
+| Deployment     | Azure Container Apps, Azure Container Registry                                      |
+| Security       | Azure Key Vault, Azure Managed Identity                                             |
+| Monitoring     | Azure Monitor, Application Insights                                                 |
+| Infrastructure | Docker, Azure                                                                       |
 
 ---
 
@@ -165,13 +165,13 @@ insightstream/
 ## How It Works
 
 1. **User Onboarding** — Users provide preferences in natural language. The Preference Agent (Claude Sonnet) converts them into structured JSON and stores them in Azure Database for PostgreSQL.
-2. **Planning** — The Planner Agent (GPT-4o) uses the web search tool to detect trending topics and the DB query tool to retrieve user preferences, dynamically deciding which sources to fetch and how to weight categories.
+2. **Planning** — The Planner Agent (GPT-5.1) uses the web search tool to detect trending topics and the DB query tool to retrieve user preferences, dynamically deciding which sources to fetch and how to weight categories.
 3. **News Ingestion** — Articles are fetched from RSS feeds and dynamically discovered sources, converted into structured documents via LlamaIndex.
 4. **Classification** — The Classifier Agent (Llama 3.3 70B) labels articles into categories: AI, FinTech, Tech.
 5. **Deduplication** — Azure OpenAI Embeddings detect duplicate stories. The DB query tool checks recently sent articles to ensure users never receive the same story twice.
 6. **Ranking** — The Ranking Agent (Llama 3.3 70B) scores articles by live user preferences (via DB query tool), novelty, relevance, and recency.
 7. **Summarization** — The Summarizer Agent (Claude Sonnet) generates concise technical summaries with "why it matters" context.
-8. **Verification** — The Verifier Agent (GPT-4o) validates summaries against source articles. If inaccuracies are detected, it triggers the summarization tool to retry with stricter constraints.
+8. **Verification** — The Verifier Agent (GPT-5.2) validates summaries against source articles. If inaccuracies are detected, it triggers the summarization tool to retry with stricter constraints.
 9. **Delivery** — Subscription status is checked via DB query tool before the curated digest is composed and emailed. All secrets managed via Azure Key Vault.
 
 ---
