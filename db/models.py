@@ -1,4 +1,6 @@
-"""SQLAlchemy ORM models.
+"""
+
+SQLAlchemy ORM models.
 
 Tables:
 - users           — registered users and their subscription status
