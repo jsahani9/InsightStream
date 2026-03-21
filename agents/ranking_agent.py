@@ -1,21 +1,115 @@
 """Ranking Agent.
 
 Scores deduplicated articles by relevance to user preferences,
-novelty, and recency. Queries live preferences via the DB query tool.
+novelty, and recency.
 Model: Llama 3.3 70B via AWS Bedrock.
 """
 
+import json
+import logging
+
+from core.bedrock_client import invoke_llama
+
+logger = logging.getLogger(__name__)
+
+TOP_N = 10
+
 SYSTEM = """You are a news ranking assistant.
-Score each article from 0–100 based on relevance to user preferences, novelty, and recency."""
+Score each article from 0 to 100 based on relevance to user preferences, novelty, and recency.
+Return only valid JSON."""
 
-USER_TEMPLATE = """
-User preferences: {preferences}
-Articles: {articles}
+USER_TEMPLATE = """User preferences: {preferences}
 
-Return a JSON list of {{ "article_id": str, "score": int }} sorted descending by score.
+Articles to rank:
+{articles}
+
+Return ONLY a valid JSON array like:
+[{{"id": 0, "score": 85}}, {{"id": 1, "score": 42}}]
+
+Include all article IDs exactly once.
+Sort descending by score.
 """
+
+
+def _parse_scores(response: str, num_articles: int) -> list[dict[str, int]]:
+    """Extract JSON array from LLM response. Falls back to default scores."""
+    try:
+        start = response.find("[")
+        end = response.rfind("]") + 1
+        if start == -1 or end == 0:
+            raise ValueError("No JSON array found in response")
+
+        raw_scores = json.loads(response[start:end])
+
+        cleaned_scores: list[dict[str, int]] = []
+        seen_ids: set[int] = set()
+
+        for item in raw_scores:
+            article_id = item.get("id")
+            score = item.get("score")
+
+            if not isinstance(article_id, int):
+                continue
+            if article_id in seen_ids:
+                continue
+            if not (0 <= article_id < num_articles):
+                continue
+
+            try:
+                score = int(score)
+            except (TypeError, ValueError):
+                score = 50
+
+            score = max(0, min(100, score))
+
+            cleaned_scores.append({"id": article_id, "score": score})
+            seen_ids.add(article_id)
+
+        for i in range(num_articles):
+            if i not in seen_ids:
+                cleaned_scores.append({"id": i, "score": 50})
+
+        return cleaned_scores
+
+    except Exception as e:
+        logger.error("Failed to parse ranking response: %s", e)
+        return [{"id": i, "score": 50} for i in range(num_articles)]
 
 
 def run(state: dict) -> dict:
     """Rank articles and return top N for summarization."""
-    raise NotImplementedError
+    articles = state.get("deduplicated_articles", [])
+    preferences = state.get("structured_preferences", {})
+
+    if not articles:
+        return {"ranked_articles": []}
+
+    article_list = "\n".join(
+        f'[{i}] {a.get("title", "")} | {a.get("source_url", "")} | {a.get("published_at", "")}'
+        for i, a in enumerate(articles)
+    )
+
+    prompt = USER_TEMPLATE.format(
+        preferences=json.dumps(preferences),
+        articles=article_list,
+    )
+
+    response = invoke_llama(
+        prompt=prompt,
+        system=SYSTEM,
+        max_gen_len=2048,
+        temperature=0.1,
+    )
+
+    scores = _parse_scores(response, len(articles))
+    scored = sorted(scores, key=lambda x: x["score"], reverse=True)
+
+    ranked_articles = []
+    for item in scored[:TOP_N]:
+        idx = item["id"]
+        article = dict(articles[idx])
+        article["score"] = item["score"]
+        ranked_articles.append(article)
+
+    logger.info("Ranking: %d -> top %d articles", len(articles), len(ranked_articles))
+    return {"ranked_articles": ranked_articles}

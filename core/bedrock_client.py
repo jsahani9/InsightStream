@@ -63,13 +63,15 @@ def invoke_claude(
 
 def invoke_llama(
     prompt: str,
+    system: str = "",
     max_gen_len: int = 512,
     temperature: float = 0.3,
 ) -> str:
     """Invoke Llama 3.3 70B on Bedrock and return the response text.
 
     Args:
-        prompt:      The full prompt string (instruction + input).
+        prompt:      The user message.
+        system:      Optional system prompt.
         max_gen_len: Maximum tokens to generate.
         temperature: Sampling temperature.
 
@@ -78,8 +80,20 @@ def invoke_llama(
     """
     client = get_bedrock_client()
 
+    if system:
+        formatted_prompt = (
+            f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
+            f"{system}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n"
+            f"{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+        )
+    else:
+        formatted_prompt = (
+            f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
+            f"{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+        )
+
     body = {
-        "prompt": prompt,
+        "prompt": formatted_prompt,
         "max_gen_len": max_gen_len,
         "temperature": temperature,
     }

@@ -34,7 +34,7 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
-def deduplicate(articles: list[dict], user_id: str) -> list[dict]:
+def deduplicate(articles: list[dict], user_id: str) -> list[dict]:  # noqa: ARG001
     """Remove duplicate and near-duplicate articles."""
     if not articles:
         return []
