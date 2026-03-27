@@ -34,5 +34,12 @@ class Settings(BaseSettings):
     # Web search
     serper_api_key: str
 
+    # Email (SMTP)
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str
+    smtp_password: str
+    email_from: str
+
 
 settings = Settings()
