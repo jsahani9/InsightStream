@@ -1,8 +1,15 @@
 """Planner Agent.
 
-Uses web search to discover trending topics and generates a fetch plan
+Uses user preferences from the DB and web search to generate a fetch plan
 with source priorities and category weights for the day's digest.
 Model: OpenAI planner model.
+
+Flow:
+  1. Read structured preferences from DB via get_user_preferences().
+  2. Read recently sent article IDs via get_recently_sent_articles()
+     so the plan avoids repeating topics the user already saw.
+  3. Search trending topics per interest using the web search tool.
+  4. Ask OpenAI to produce a JSON fetch plan (sources + category weights).
 """
 
 import json
@@ -11,6 +18,7 @@ import logging
 from openai import OpenAI
 
 from core.config import settings
+from tools.database_query_tool import get_recently_sent_articles, get_user_preferences
 from tools.web_search_tool import web_search
 
 logger = logging.getLogger(__name__)
@@ -18,14 +26,25 @@ logger = logging.getLogger(__name__)
 _openai_client = None
 
 SYSTEM = """You are a news planning assistant.
-Given user preferences and today's trending topics, decide which sources to fetch
-and how to weight topic categories."""
+Given user preferences, recently sent article IDs to avoid, and today's trending topics,
+decide which sources to fetch and how to weight topic categories."""
 
 USER_TEMPLATE = """
-User preferences: {preferences}
-Trending topics from web search: {trending}
+User preferences:
+{preferences}
 
-Return a JSON fetch plan with keys: sources (list[url]), category_weights (dict).
+Recently sent article IDs (avoid repeating these topics):
+{recently_sent}
+
+Trending topics from web search:
+{trending}
+
+Return ONLY a valid JSON object with exactly these keys:
+- sources          (list of URLs to fetch articles from)
+- category_weights (dict mapping category name to a float weight 0.0–1.0)
+
+Example:
+{{"sources": ["https://techcrunch.com", "https://wired.com"], "category_weights": {{"AI": 0.6, "FinTech": 0.4}}}}
 """
 
 
@@ -48,17 +67,54 @@ def _parse_fetch_plan(response: str) -> dict:
         logger.warning("Failed to parse fetch plan: %s", e)
         return {"sources": [], "category_weights": {}}
 
+""" 
+ Before it didn't know for what it's planning, now with the user_id it has clear direction.
+ Now it knows for what user it's producing the ouput. 
 
-def run(state: dict) -> dict:
-    """Plan fetch strategy based on user preferences and trending topics."""
-    preferences = state.get("structured_preferences", {})
-    topics = preferences.get("topics", [])
+    - knows which user it's planning for
+    - reads preferences from DB
+    - Avoids topics user already saw
+    - Uses correct interests key
+    - can run Async DB calls
+    
+"""
+async def run(state: dict) -> dict:
+    """Plan fetch strategy based on user preferences and trending topics.
 
-    # Search for trending topics per category
-    web_articles = []
-    trending_lines = []
-    for topic in topics:
-        results = web_search(query=f"latest {topic} news today", max_results=5)
+    Reads preferences and recently sent articles from the DB so the plan
+    is always up-to-date and avoids re-delivering known content.
+    """
+    user_id: str = state.get("user_id", "")
+
+    # Step 1: load preferences from DB; fall back to pipeline state if missing
+    db_preferences = {}
+    if user_id:
+        db_preferences = await get_user_preferences(user_id)
+        if db_preferences:
+            logger.info("Planner: loaded preferences from DB for user %s", user_id)
+        else:
+            logger.warning(
+                "Planner: no DB preferences for user %s, falling back to state", user_id
+            )
+
+    preferences = db_preferences or state.get("structured_preferences", {})
+    interests: list[str] = preferences.get("interests", [])
+
+    # Step 2: load recently sent article IDs to avoid topic repetition
+    recently_sent: list[str] = []
+    if user_id:
+        recently_sent = await get_recently_sent_articles(user_id, days=7)
+        logger.info(
+            "Planner: %d recently sent articles found for user %s",
+            len(recently_sent), user_id,
+        )
+
+    # Step 3: search for trending topics per interest
+    web_articles: list[dict] = []
+    trending_lines: list[str] = []
+
+    for interest in interests:
+        results = web_search(query=f"latest {interest} news today", max_results=5)
         for r in results:
             web_articles.append({
                 "title": r.get("title", ""),
@@ -68,12 +124,14 @@ def run(state: dict) -> dict:
                 "source_url": r.get("url", ""),
             })
         titles = [r["title"] for r in results[:3]]
-        trending_lines.append(f"{topic}: {', '.join(titles)}")
+        trending_lines.append(f"{interest}: {', '.join(titles)}")
 
-    trending_text = "\n".join(trending_lines)
+    trending_text = "\n".join(trending_lines) if trending_lines else "No trending data available."
 
+    # Step 4: ask OpenAI to produce the fetch plan
     prompt = USER_TEMPLATE.format(
-        preferences=json.dumps(preferences),
+        preferences=json.dumps(preferences, indent=2),
+        recently_sent=json.dumps(recently_sent) if recently_sent else "none",
         trending=trending_text,
     )
 
@@ -91,8 +149,12 @@ def run(state: dict) -> dict:
     raw_response = response.choices[0].message.content
     fetch_plan = _parse_fetch_plan(raw_response)
 
-    logger.info("Planner: %d web articles fetched across %d topics", len(web_articles), len(topics))
+    logger.info(
+        "Planner: %d web articles fetched across %d interests", len(web_articles), len(interests)
+    )
+
     return {
         "fetch_plan": fetch_plan,
         "raw_articles": web_articles,
+        "structured_preferences": preferences,
     }

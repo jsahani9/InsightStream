@@ -7,7 +7,7 @@ Tables:
 - sent_articles   — delivery history per user
 """
 
-import uuid
+import uuid   # Generate a unique number 
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -19,6 +19,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+
+
 from sqlalchemy.dialects.postgresql import ARRAY, JSON, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -26,13 +28,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
-
+# DeclarativeBase sets up the infrastructure for defining database models.
 class Base(DeclarativeBase):
     pass
 
 
 class User(Base):
-    """Registered users and their subscription status."""
+    """ Registered users and their subscription status. """
 
     __tablename__ = "users"
 
@@ -54,6 +56,11 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"
+
+
+# Mapper : In SQLAlchemy handles mapping between python classes and database tables
+# Convert python objects into database columns 
+
 
 
 class Preference(Base):
