@@ -8,7 +8,7 @@ Output: list of {title, url, snippet, published_at}
 import httpx
 from core.config import settings
 
-SERPER_URL = "https://google.serper.dev/search"
+SERPER_URL = "https://google.serper.dev/news"
 
 
 def web_search(query: str, max_results: int = 10) -> list[dict]:
@@ -20,6 +20,7 @@ def web_search(query: str, max_results: int = 10) -> list[dict]:
     payload = {
         "q": query,
         "num": max_results,
+        "tbs": "qdr:d",  # last 24 hours only
     }
 
     response = httpx.post(
@@ -33,7 +34,7 @@ def web_search(query: str, max_results: int = 10) -> list[dict]:
     data = response.json()
     results = []
 
-    for item in data.get("organic", [])[:max_results]:
+    for item in data.get("news", [])[:max_results]:
         results.append(
             {
                 "title": item.get("title", ""),

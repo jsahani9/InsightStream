@@ -8,6 +8,7 @@ from typing import TypedDict
 
 class PipelineState(TypedDict):
     user_id: str
+    user_email: str
     raw_preferences: dict
     structured_preferences: dict
     fetch_plan: dict

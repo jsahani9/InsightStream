@@ -12,7 +12,7 @@ from core.bedrock_client import invoke_llama
 
 logger = logging.getLogger(__name__)
 
-TOP_N = 10
+TOP_N = 5
 
 SYSTEM = """You are a news ranking assistant.
 Score each article from 0 to 100 based on relevance to user preferences, novelty, and recency.
@@ -104,8 +104,9 @@ def run(state: dict) -> dict:
     scores = _parse_scores(response, len(articles))
     scored = sorted(scores, key=lambda x: x["score"], reverse=True)
 
+    top_n = preferences.get("article_count", TOP_N)
     ranked_articles = []
-    for item in scored[:TOP_N]:
+    for item in scored[:top_n]:
         idx = item["id"]
         article = dict(articles[idx])
         article["score"] = item["score"]
