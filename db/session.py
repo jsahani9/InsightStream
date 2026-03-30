@@ -1,5 +1,5 @@
-"""Database session management.
-
+"""
+Database session management.
 Provides an async SQLAlchemy engine and session factory.
 """
 
@@ -10,6 +10,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 engine = None          # initialized from config.DATABASE_URL at startup
 AsyncSessionLocal: async_sessionmaker[AsyncSession] | None = None
+
+
+
+
+# It takes the raw Database_url from .env and fixes it before hangling it to the driver
+
+# - Neon's Connection Sstring includes "sslmode = require&channel" _binding = require in the URL
+# - but asyncpg (async postgres driver doesn't accept those as URL parameters) - it needs SSL configured a different way
+
+# So the Function : 
+# 1. Parses the URL and strips sslmode and channel_binding out of the query string 
+# 2. If sslmode was require, it sets {"ssl" : True} in a seperate connect_args dict
+# 3. Return the cleaned url + connect_args dict 
+
+
+
 
 
 def _prepare_url(database_url: str) -> tuple[str, dict]:
@@ -32,12 +48,25 @@ def _prepare_url(database_url: str) -> tuple[str, dict]:
     return clean_url, connect_args
 
 
+""" 
+
+- Calls _prepare_url() to get the clean URL and SSL args
+- Creates the async engine — this is the low-level object that manages the actual TCP connection pool to Neon
+- Creates the session factory (AsyncSessionLocal) — a callable that produces individual database sessions on demand
+
+"""
+
+
+
 def init_db(database_url: str) -> None:
     """Initialize the async engine and session factory."""
     global engine, AsyncSessionLocal
     clean_url, connect_args = _prepare_url(database_url)
     engine = create_async_engine(clean_url, connect_args=connect_args, echo=False)
     AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+
+
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
