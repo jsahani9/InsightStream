@@ -1,13 +1,12 @@
-"""Email delivery service.
+"""
 
+Email delivery service.
 Sends the composed digest to the user via SMTP using aiosmtplib.
 Checks subscription status before sending — unsubscribed users are silently skipped. ---- 
 
 New Stuff :
     - Subscription Check
     - Unsubscribed user won't receive the mail
-
-
 """
 
 
@@ -18,7 +17,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import aiosmtplib
-
 from core.config import settings
 from tools.database_query_tool import is_user_subscribed
 
