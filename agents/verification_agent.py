@@ -18,14 +18,21 @@ logger = logging.getLogger(__name__)
 _openai_client = None
 
 SYSTEM = """You are a factual accuracy verification assistant.
-Compare each summary against its source article and identify any inaccuracies or hallucinations."""
+Compare each summary against its source article and identify inaccuracies or hallucinations.
+Rules:
+- Only fail a summary if it contains clearly fabricated facts or claims not present in the source.
+- Numbers and dollar amounts are acceptable if they appear anywhere in the source text.
+- Do NOT fail a summary for minor wording differences or reasonable paraphrasing.
+- Only fail if a bullet invents specific facts, names, or figures that are completely absent from the source.
+- Also fail if "why_it_matters" contains filler like "the source does not provide", "insufficient information", or "the article does not mention"."""
 
 USER_TEMPLATE = """
 Source article: {article_text}
 Summary bullets: {summary_bullets}
 Why it matters: {why_it_matters}
 
-Return JSON: {{ "passed": bool, "issues": list[str] }}
+You MUST respond with ONLY a valid JSON object. No prose, no explanation, no markdown.
+Format: {{"passed": true, "issues": []}} or {{"passed": false, "issues": ["issue1", "issue2"]}}
 """
 
 
@@ -57,8 +64,11 @@ def run(state: dict) -> dict:
     if not summaries:
         return {"verified_summaries": []}
 
-    # Build URL → snippet lookup from ranked_articles for source text
-    article_lookup = {a.get("url", ""): a.get("snippet", "") for a in ranked_articles}
+    # Build URL → full content lookup (fall back to snippet) for source text
+    article_lookup = {
+        a.get("url", ""): a.get("content") or a.get("snippet", "")
+        for a in ranked_articles
+    }
 
     client = _get_openai_client()
     verified = []
@@ -105,15 +115,27 @@ def run(state: dict) -> dict:
                 start = revised_raw.find("{")
                 end = revised_raw.rfind("}") + 1
                 revised = json.loads(revised_raw[start:end]) if start != -1 else {}
-                verified.append({
-                    **summary,
-                    "bullets": revised.get("bullets", bullets),
-                    "why_it_matters": revised.get("why_it_matters", why_it_matters),
-                })
-                logger.info("Retry succeeded: %s", summary.get("title", "")[:60])
+                revised_bullets = revised.get("bullets", bullets)
+                revised_why = revised.get("why_it_matters", why_it_matters)
+                bad_phrases = ("cannot be determined", "insufficient", "does not provide",
+                               "not mentioned", "not available", "no information")
+                # Drop if why_it_matters is still bad OR bullet count is wrong
+                if any(p in revised_why.lower() for p in bad_phrases):
+                    logger.warning("Dropping article after retry — poor why_it_matters: %s",
+                                   summary.get("title", "")[:60])
+                elif len(revised_bullets) != 3:
+                    logger.warning("Dropping article after retry — got %d bullets (need 3): %s",
+                                   len(revised_bullets), summary.get("title", "")[:60])
+                else:
+                    verified.append({
+                        **summary,
+                        "bullets": revised_bullets,
+                        "why_it_matters": revised_why,
+                        "category": summary.get("category", ""),
+                    })
+                    logger.info("Retry succeeded: %s", summary.get("title", "")[:60])
             except Exception as e:
-                logger.warning("Retry failed, keeping original summary: %s", e)
-                verified.append(summary)
+                logger.warning("Retry failed, dropping article: %s", e)
 
     logger.info("Verification: %d/%d summaries passed or recovered", len(verified), len(summaries))
     return {"verified_summaries": verified}

@@ -105,12 +105,26 @@ def run(state: dict) -> dict:
     scored = sorted(scores, key=lambda x: x["score"], reverse=True)
 
     top_n = preferences.get("article_count", TOP_N)
+    buffer_n = top_n * 2
+
+    # Pick top articles with category diversity enforcement
+    # No single category can take more than half the slots
+    max_per_category = max(2, top_n // 2)
+    category_counts: dict[str, int] = {}
     ranked_articles = []
-    for item in scored[:top_n]:
+
+    for item in scored:
+        if len(ranked_articles) >= buffer_n:
+            break
         idx = item["id"]
         article = dict(articles[idx])
+        cat = article.get("category") or "Other"
+        if category_counts.get(cat, 0) >= max_per_category:
+            continue
         article["score"] = item["score"]
         ranked_articles.append(article)
+        category_counts[cat] = category_counts.get(cat, 0) + 1
 
-    logger.info("Ranking: %d -> top %d articles", len(articles), len(ranked_articles))
+    logger.info("Ranking: %d -> top %d articles (buffer for %d requested, diversity: %s)",
+                len(articles), len(ranked_articles), top_n, category_counts)
     return {"ranked_articles": ranked_articles}

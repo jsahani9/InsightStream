@@ -22,7 +22,7 @@ from tools.database_query_tool import get_recently_sent_articles
 
 logger = logging.getLogger(__name__)
 
-SIMILARITY_THRESHOLD = 0.92
+SIMILARITY_THRESHOLD = 0.75
 
 
 def _get_embeddings(texts: list[str]) -> list[list[float]]:

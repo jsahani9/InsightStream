@@ -33,3 +33,6 @@ class PipelineState(TypedDict):
 
     # ── Pipeline status (set when exiting early) ──────────────────────────────
     pipeline_status: str          # "success" | "no_new_articles" | "no_summaries"
+
+    # ── Trigger mode ──────────────────────────────────────────────────────────
+    on_demand: bool               # True = user clicked "Get News Now", skip subscription check

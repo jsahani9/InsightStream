@@ -12,14 +12,16 @@ from core.bedrock_client import invoke_claude
 
 logger = logging.getLogger(__name__)
 
-SYSTEM = """You are a technical news summarization assistant.
+SYSTEM = """You are a news digest summarization assistant.
 Summarize the article into EXACTLY 3 bullet points followed by a "Why it matters" sentence.
-Rules:==
-- EXACTLY 3 bullets. No more, no fewer.
-- EXACTLY 2 sentences per bullet. No more, no fewer.
-- Write in active voice. Be direct and specific — include company names, numbers, and key facts.
+STRICT RULES:
+- EXACTLY 3 bullets. Not 2, not 4.
+- Each bullet is EXACTLY 1 sentence. Max 20 words. No compound sentences joined with "and".
+- Be specific — include names, numbers, and key facts. Cut all filler words.
 - Never start a bullet with "The article", "This article", "The source", or "The piece".
-- If the content is thin, infer reasonable context from the title and what is available. Do not mention lack of information."""
+- Only use facts explicitly stated in the article. Do NOT speculate or pad thin content.
+- If the article lacks enough content for 3 distinct factual bullets, return an empty bullets list [].
+- "why_it_matters": one punchy sentence, max 25 words, explains the real-world impact using facts from the article only. No vague filler like "this highlights" or "this shows"."""
 
 USER_TEMPLATE = """
 Article title: {title}
@@ -58,14 +60,26 @@ def run(state: dict) -> dict:
         response = invoke_claude(prompt=prompt, system=SYSTEM, max_tokens=768, temperature=0.3)
         parsed = _parse_summary(response)
 
+        bullets = parsed.get("bullets", [])
+        why_it_matters = parsed.get("why_it_matters", "")
+
+        # Hard drop — must have exactly 3 bullets and a non-empty why_it_matters
+        if len(bullets) != 3 or not why_it_matters.strip():
+            logger.warning(
+                "Dropping article — got %d bullets (need 3): %s",
+                len(bullets), article.get("title", "")[:60]
+            )
+            continue
+
         summaries.append({
             "title": article.get("title", ""),
             "url": article.get("url", ""),
             "source_url": article.get("source_url", ""),
             "published_at": article.get("published_at", ""),
+            "category": article.get("category", ""),
             "score": article.get("score"),
-            "bullets": parsed.get("bullets", []),
-            "why_it_matters": parsed.get("why_it_matters", ""),
+            "bullets": bullets,
+            "why_it_matters": why_it_matters,
         })
         logger.info("Summarized: %s", article.get("title", "")[:60])
 

@@ -47,6 +47,9 @@ async def run_digest_for_user(user_id: str, user_email: str) -> None:
             "summaries": [],
             "verified_summaries": [],
             "digest": "",
+            "fetch_retry_count": 0,
+            "summarization_retry_count": 0,
+            "pipeline_status": "",
         }
         await pipeline.ainvoke(initial_state)
         log.info(f"Digest sent to {user_email}")

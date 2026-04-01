@@ -26,23 +26,23 @@ logger = logging.getLogger(__name__)
 _ssl_context = ssl.create_default_context()
 
 
-async def send(user_id: str, user_email: str, digest: str) -> None:
+async def send(user_id: str, user_email: str, digest: str, check_subscription: bool = True) -> None:
     """Send the HTML digest email to the given address.
 
-    Checks subscription status first — if the user has unsubscribed,
-    the email is silently skipped and no exception is raised.
-
     Args:
-        user_id:    UUID string of the user (used for subscription check).
-        user_email: Recipient email address.
-        digest:     HTML digest string to send.
+        user_id:             UUID string of the user.
+        user_email:          Recipient email address.
+        digest:              HTML digest string to send.
+        check_subscription:  If True (default), skip unsubscribed users.
+                             Set to False for on-demand sends (Get News Now).
     """
-    subscribed = await is_user_subscribed(user_id)
-    if not subscribed:
-        logger.info(
-            "Skipping digest for user %s (%s) — not subscribed.", user_id, user_email
-        )
-        return
+    if check_subscription:
+        subscribed = await is_user_subscribed(user_id)
+        if not subscribed:
+            logger.info(
+                "Skipping digest for user %s (%s) — not subscribed.", user_id, user_email
+            )
+            return
 
     today = datetime.now(timezone.utc).strftime("%B %d, %Y")
 

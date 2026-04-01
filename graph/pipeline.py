@@ -59,6 +59,7 @@ from graph.nodes import (
     deduplication_node,
     digest_composition_node,
     email_delivery_node,
+    enrich_and_filter_node,
     fetch_articles_node,
     planner_node,
     preference_extraction_node,
@@ -178,6 +179,7 @@ def build_pipeline():
     graph.add_node("classifier",             classifier_node)
     graph.add_node("deduplication",          deduplication_node)
     graph.add_node("ranking",                ranking_node)
+    graph.add_node("enrich_and_filter",      enrich_and_filter_node)
     graph.add_node("summarization",          summarization_node)
     graph.add_node("verification",           verification_node)
     graph.add_node("digest_composition",     digest_composition_node)
@@ -213,11 +215,12 @@ def build_pipeline():
         "ranking",
         route_after_ranking,
         {
-            "summarization":    "summarization",
-            "fetch_articles":   "bump_fetch_retry",   # bump counter then re-fetch
+            "summarization":    "enrich_and_filter",  # enrich content + drop thin articles first
+            "fetch_articles":   "bump_fetch_retry",
             "end_no_articles":  "end_no_articles",
         },
     )
+    graph.add_edge("enrich_and_filter", "summarization")
     # retry loop: bump counter → back to fetch_articles
     graph.add_edge("bump_fetch_retry",       "fetch_articles")
 

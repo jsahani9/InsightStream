@@ -39,12 +39,32 @@ Recently sent article IDs (avoid repeating these topics):
 Trending topics from web search:
 {trending}
 
+You MUST only pick sources from this approved list (these are confirmed working RSS feeds):
+
+AI sources:
+- https://www.marktechpost.com/feed/
+- https://www.artificialintelligence-news.com/feed/
+- https://venturebeat.com/feed/
+
+Tech sources:
+- https://techcrunch.com/feed/
+- https://www.theverge.com/rss/index.xml
+- https://www.wired.com/feed/rss
+- https://www.zdnet.com/news/rss.xml
+- https://feeds.arstechnica.com/arstechnica/index
+
+FinTech sources:
+- https://www.finextra.com/rss/fullnews.aspx
+- https://feeds.feedburner.com/TheHackerNews
+
+You MUST include at least one source from each category (AI, Tech, FinTech) to ensure topic diversity.
+
 Return ONLY a valid JSON object with exactly these keys:
-- sources          (list of URLs to fetch articles from)
+- sources          (list of URLs picked from the approved list above — minimum 1 per category)
 - category_weights (dict mapping category name to a float weight 0.0–1.0)
 
 Example:
-{{"sources": ["https://techcrunch.com", "https://wired.com"], "category_weights": {{"AI": 0.6, "FinTech": 0.4}}}}
+{{"sources": ["https://techcrunch.com/feed/", "https://www.wired.com/feed/rss", "https://www.finextra.com/rss/fullnews.aspx"], "category_weights": {{"AI": 0.5, "FinTech": 0.3, "Tech": 0.2}}}}
 """
 
 

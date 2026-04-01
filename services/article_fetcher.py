@@ -106,17 +106,33 @@ def fetch(sources: list[str]) -> list[dict]:
     return all_articles
 
 
+# Domains that block scraping or are paywalled — fall back to snippet immediately
+_BLOCKED_DOMAINS = {
+    "reuters.com", "wsj.com", "ft.com", "economist.com",
+    "bloomberg.com", "nytimes.com", "washingtonpost.com",
+    "thetimes.co.uk", "telegraph.co.uk",
+}
+
+
+def _is_blocked(url: str) -> bool:
+    return any(domain in url for domain in _BLOCKED_DOMAINS)
+
+
 def enrich_with_content(articles: list[dict]) -> list[dict]:
     """Fetch full article text for each article and add a 'content' field.
 
     Falls back to snippet if the page cannot be fetched or parsed.
-    Only fetches URLs not already enriched.
+    Skips known paywalled/blocked domains immediately.
     """
     enriched = []
     for article in articles:
         url = article.get("url", "")
         if not url:
             enriched.append(article)
+            continue
+        if _is_blocked(url):
+            logger.info("Skipping blocked domain, using snippet: %s", url[:60])
+            enriched.append({**article, "content": article.get("snippet", "")})
             continue
         try:
             response = httpx.get(

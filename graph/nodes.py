@@ -135,6 +135,29 @@ def ranking_node(state: dict) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Node 6.5 — Content Enrichment + Thin Article Filter  (sync)
+# Reads : ranked_articles
+# Writes: ranked_articles (enriched, thin ones dropped)
+# ─────────────────────────────────────────────────────────────────────────────
+MIN_CONTENT_LENGTH = 300  # drop articles with less than this many chars of content
+
+def enrich_and_filter_node(state: dict) -> dict:
+    """Fetch full article content, then drop articles with insufficient text."""
+    ranked = state.get("ranked_articles", [])
+    enriched = article_fetcher.enrich_with_content(ranked)
+    before = len(enriched)
+    enriched = [
+        a for a in enriched
+        if len(a.get("content") or a.get("snippet", "")) >= MIN_CONTENT_LENGTH
+    ]
+    logger.info(
+        "Node [enrich_and_filter]: %d → %d articles (dropped %d thin articles).",
+        before, len(enriched), before - len(enriched),
+    )
+    return {"ranked_articles": enriched}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Node 7 — Summarization  (sync)
 # Reads : ranked_articles
 # Writes: summaries
@@ -153,9 +176,18 @@ def summarization_node(state: dict) -> dict:
 # Writes: verified_summaries
 # ─────────────────────────────────────────────────────────────────────────────
 def verification_node(state: dict) -> dict:
-    """Verify summaries for factual accuracy; retry failed ones via Claude."""
+    """Verify summaries for factual accuracy; retry failed ones via Claude.
+    Trims final list to exactly article_count so user gets what they asked for.
+    """
     result = verification_agent.run(state)
     verified = result.get("verified_summaries", [])
+
+    # Trim to exactly what the user requested
+    article_count = state.get("structured_preferences", {}).get("article_count", 5)
+    if len(verified) > article_count:
+        verified = verified[:article_count]
+        logger.info("Node [verification]: trimmed to %d articles (user requested %d).", article_count, article_count)
+
     logger.info(
         "Node [verification]: %d/%d summaries passed.",
         len(verified), len(state.get("summaries", [])),
@@ -199,8 +231,10 @@ async def email_delivery_node(state: dict) -> dict:
         logger.warning("Node [email_delivery]: missing user_id or user_email — skipping.")
         return {}
 
-    # Send email (subscription check is inside email_send)
-    await email_send(user_id=user_id_str, user_email=user_email, digest=digest)
+    # on_demand=True bypasses subscription check — user explicitly requested this
+    on_demand = state.get("on_demand", False)
+    await email_send(user_id=user_id_str, user_email=user_email, digest=digest,
+                     check_subscription=not on_demand)
 
     # Persist delivered articles to DB
     verified_summaries = state.get("verified_summaries", [])
@@ -224,9 +258,9 @@ async def email_delivery_node(state: dict) -> dict:
             if art is None:
                 art = Article(
                     url=url,
-                    title=summary.get("title", ""),
-                    snippet=summary.get("snippet", ""),
-                    source=summary.get("source_url", ""),
+                    title=summary.get("title", "")[:500],
+                    snippet=summary.get("snippet", "")[:500],
+                    source=summary.get("source_url", "")[:255],
                     category=summary.get("category") or category_lookup.get(url),
                 )
                 session.add(art)

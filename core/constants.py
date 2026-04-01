@@ -4,14 +4,22 @@ from typing import Final
 
 
 RSS_FEED_URLS: Final[list[str]] = [
+    # Tech
     "https://techcrunch.com/feed/",
     "https://venturebeat.com/feed/",
     "https://www.theverge.com/rss/index.xml",
-    "https://www.finextra.com/rss/fullnews.aspx",
-    "https://www.marktechpost.com/feed/",
-    "https://feeds.bloomberg.com/markets/news.rss",
     "https://www.wired.com/feed/rss",
     "https://www.zdnet.com/news/rss.xml",
+    "https://www.marktechpost.com/feed/",
+    # AI
+    "https://aiweekly.co/issues.rss",
+    "https://www.artificialintelligence-news.com/feed/",
+    # FinTech / Finance
+    "https://www.finextra.com/rss/fullnews.aspx",
+    "https://feeds.feedburner.com/TheHackerNews",  # cybersecurity / tech overlap
+    # General tech news (open, no paywall)
+    "https://feeds.arstechnica.com/arstechnica/index",
+    "https://rss.slashdot.org/Slashdot/slashdotMain",
 ]
 
 MAX_ARTICLES_PER_FEED: Final[int] = 20
