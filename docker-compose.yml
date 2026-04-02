@@ -1,0 +1,16 @@
+services:
+  streamlit:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    env_file:
+      - .env
+    command: python scheduler.py
+    restart: unless-stopped
