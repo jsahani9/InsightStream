@@ -38,6 +38,7 @@ tenacity>=8.3.0
 
 # Scheduler
 apscheduler>=3.10.0
+tzdata>=2024.1
 
 # Testing
 pytest>=8.2.0

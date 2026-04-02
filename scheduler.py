@@ -71,10 +71,11 @@ async def run_all_digests() -> None:
         log.info("No subscribed users found — nothing to do.")
         return
 
-    log.info(f"Found {len(users)} subscribed user(s). Sending digests...")
+    log.info(f"Found {len(users)} subscribed user(s). Sending digests in parallel...")
 
-    for user in users:
-        await run_digest_for_user(str(user.id), user.email)
+    await asyncio.gather(
+        *[run_digest_for_user(str(user.id), user.email) for user in users]
+    )
 
     log.info("=== Daily digest job complete ===")
 
@@ -85,7 +86,7 @@ async def main():
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         run_all_digests,
-        trigger=CronTrigger(hour=9, minute=0),   # 9:00 AM every day
+        trigger=CronTrigger(hour=9, minute=0, timezone="America/Toronto"),   # 9:00 AM ET every day
         id="daily_digest",
         name="Daily digest for all subscribed users",
         replace_existing=True,
