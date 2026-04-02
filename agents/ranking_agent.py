@@ -105,11 +105,11 @@ def run(state: dict) -> dict:
     scored = sorted(scores, key=lambda x: x["score"], reverse=True)
 
     top_n = preferences.get("article_count", TOP_N)
-    buffer_n = top_n * 2
+    buffer_n = top_n * 3  # large buffer so drops in enrichment/summarization don't starve final count
 
-    # Pick top articles with category diversity enforcement
-    # No single category can take more than half the slots
-    max_per_category = max(2, top_n // 2)
+    # Category diversity for the buffer: each category can contribute up to top_n articles.
+    # Diversity for the final delivered set is enforced by the verification trim.
+    max_per_category = top_n
     category_counts: dict[str, int] = {}
     ranked_articles = []
 

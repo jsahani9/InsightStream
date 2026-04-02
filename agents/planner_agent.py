@@ -39,32 +39,58 @@ Recently sent article IDs (avoid repeating these topics):
 Trending topics from web search:
 {trending}
 
-You MUST only pick sources from this approved list (these are confirmed working RSS feeds):
+You MUST only pick sources from this approved list (confirmed working RSS feeds):
 
-AI sources:
+AI / Machine Learning:
 - https://www.marktechpost.com/feed/
 - https://www.artificialintelligence-news.com/feed/
 - https://venturebeat.com/feed/
+- https://www.deeplearning.ai/the-batch/feed/
+- https://importai.substack.com/feed
 
-Tech sources:
+Tech / Software / Cybersecurity:
 - https://techcrunch.com/feed/
 - https://www.theverge.com/rss/index.xml
 - https://www.wired.com/feed/rss
 - https://www.zdnet.com/news/rss.xml
 - https://feeds.arstechnica.com/arstechnica/index
-
-FinTech sources:
-- https://www.finextra.com/rss/fullnews.aspx
+- https://www.theregister.com/headlines.rss
+- https://www.engadget.com/rss.xml
+- https://www.technologyreview.com/feed/
 - https://feeds.feedburner.com/TheHackerNews
 
-You MUST include at least one source from each category (AI, Tech, FinTech) to ensure topic diversity.
+FinTech / Payments / Banking:
+- https://www.finextra.com/rss/fullnews.aspx
+- https://finovate.com/feed/
+- https://www.crowdfundinsider.com/feed/
+- https://www.pymnts.com/feed/
+
+Crypto / Blockchain / Web3:
+- https://www.coindesk.com/arc/outboundfeeds/rss/
+- https://cointelegraph.com/rss
+- https://decrypt.co/feed
+- https://bitcoinist.com/feed/
+
+Markets / Finance / Stocks:
+- https://feeds.marketwatch.com/marketwatch/topstories/
+- https://www.cnbc.com/id/100003114/device/rss/rss.html
+- https://www.cnbc.com/id/10001147/device/rss/rss.html
+- https://www.forbes.com/real-time/feed2/
+
+World / Business News:
+- https://feeds.bbci.co.uk/news/business/rss.xml
+- https://feeds.bbci.co.uk/news/technology/rss.xml
+- https://www.theguardian.com/technology/rss
+- https://www.theguardian.com/business/rss
+
+Pick sources that best match the user's interests and categories. Include at least one source per user interest category for diversity.
 
 Return ONLY a valid JSON object with exactly these keys:
-- sources          (list of URLs picked from the approved list above — minimum 1 per category)
-- category_weights (dict mapping category name to a float weight 0.0–1.0)
+- sources          (list of URLs picked from the approved list above)
+- category_weights (dict mapping each user category to a float weight 0.0–1.0)
 
 Example:
-{{"sources": ["https://techcrunch.com/feed/", "https://www.wired.com/feed/rss", "https://www.finextra.com/rss/fullnews.aspx"], "category_weights": {{"AI": 0.5, "FinTech": 0.3, "Tech": 0.2}}}}
+{{"sources": ["https://techcrunch.com/feed/", "https://www.coindesk.com/arc/outboundfeeds/rss/", "https://feeds.marketwatch.com/marketwatch/topstories/"], "category_weights": {{"Tech": 0.4, "Crypto": 0.3, "Markets": 0.3}}}}
 """
 
 

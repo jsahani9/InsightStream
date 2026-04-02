@@ -7,6 +7,7 @@ Model: Claude Sonnet 4.5 via AWS Bedrock.
 
 import json
 import logging
+import re
 
 from core.bedrock_client import invoke_claude
 
@@ -38,7 +39,9 @@ def _parse_summary(response: str) -> dict:
         end = response.rfind("}") + 1
         if start == -1 or end == 0:
             raise ValueError("No JSON object in response")
-        return json.loads(response[start:end])
+        # Strip trailing commas before closing brackets/braces (LLM formatting issue)
+        cleaned = re.sub(r',\s*([}\]])', r'\1', response[start:end])
+        return json.loads(cleaned)
     except Exception as e:
         logger.warning("Failed to parse summary response: %s", e)
         return {"bullets": [], "why_it_matters": ""}

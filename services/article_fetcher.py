@@ -111,6 +111,7 @@ _BLOCKED_DOMAINS = {
     "reuters.com", "wsj.com", "ft.com", "economist.com",
     "bloomberg.com", "nytimes.com", "washingtonpost.com",
     "thetimes.co.uk", "telegraph.co.uk",
+    "fintechfutures.com", "bizjournals.com",
 }
 
 

@@ -30,12 +30,14 @@ User input:
 {raw_input}
 
 Return ONLY a valid JSON object with exactly these keys:
-- interests        (list of strings)
+- interests        (list of strings — specific topics the user mentioned)
+- categories       (list of strings — normalized topic buckets derived from interests, Title Case.
+                   Map interests to clean category names e.g. AI, Tech, FinTech, Crypto, Markets, World, Sports, Health, Science, etc.)
 - excluded_topics  (list of strings)
 - article_count    (integer, default 10 if not specified)
 
-Example:
-{{"interests": ["AI", "FinTech"], "excluded_topics": ["crypto"], "article_count": 5}}
+Example for "I want AI news, crypto, and stock market updates, 5 articles":
+{{"interests": ["AI", "crypto", "stock market"], "categories": ["AI", "Crypto", "Markets"], "excluded_topics": [], "article_count": 5}}
 """
 
 
@@ -52,6 +54,7 @@ def _parse_llm_response(text: str) -> dict:
     parsed = json.loads(text[start:end])
     return {
         "interests": list(parsed.get("interests", [])),
+        "categories": list(parsed.get("categories", [])),
         "excluded_topics": list(parsed.get("excluded_topics", [])),
         "article_count": int(parsed.get("article_count", 10)),
     }
@@ -99,7 +102,7 @@ async def run(user_input: dict) -> dict:
                 interests=structured["interests"],
                 excluded_topics=structured["excluded_topics"],
                 article_count=structured["article_count"],
-                extra={},
+                extra={"categories": structured["categories"]},
             )
             session.add(pref)
             logger.info("Created new preference row for user %s", user_id_str)
@@ -107,6 +110,7 @@ async def run(user_input: dict) -> dict:
             pref.interests = structured["interests"]
             pref.excluded_topics = structured["excluded_topics"]
             pref.article_count = structured["article_count"]
+            pref.extra = {**(pref.extra or {}), "categories": structured["categories"]}
             logger.info("Updated existing preference row for user %s", user_id_str)
 
         await session.commit()

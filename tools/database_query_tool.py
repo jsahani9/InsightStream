@@ -39,6 +39,7 @@ async def get_user_preferences(user_id: str) -> dict:
     return {
         "user_id": str(pref.user_id),
         "interests": pref.interests,
+        "categories": (pref.extra or {}).get("categories", []),
         "excluded_topics": pref.excluded_topics,
         "article_count": pref.article_count,
         "extra": pref.extra,

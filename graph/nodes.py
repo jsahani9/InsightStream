@@ -182,11 +182,29 @@ def verification_node(state: dict) -> dict:
     result = verification_agent.run(state)
     verified = result.get("verified_summaries", [])
 
-    # Trim to exactly what the user requested
+    # Diversity-aware trim to exactly article_count
     article_count = state.get("structured_preferences", {}).get("article_count", 5)
     if len(verified) > article_count:
-        verified = verified[:article_count]
-        logger.info("Node [verification]: trimmed to %d articles (user requested %d).", article_count, article_count)
+        categories = state.get("structured_preferences", {}).get("categories") or ["AI", "FinTech", "Tech"]
+        num_cats = len(categories)
+        max_per_cat = max(1, -(-article_count // num_cats))  # ceiling division
+        cat_counts: dict[str, int] = {}
+        diverse: list = []
+        for s in verified:
+            cat = s.get("category", "Other")
+            if cat_counts.get(cat, 0) < max_per_cat and len(diverse) < article_count:
+                diverse.append(s)
+                cat_counts[cat] = cat_counts.get(cat, 0) + 1
+        # Fill remaining slots if any category was short
+        if len(diverse) < article_count:
+            picked_urls = {s["url"] for s in diverse}
+            for s in verified:
+                if len(diverse) >= article_count:
+                    break
+                if s["url"] not in picked_urls:
+                    diverse.append(s)
+        verified = diverse
+        logger.info("Node [verification]: trimmed to %d articles with diversity %s.", article_count, cat_counts)
 
     logger.info(
         "Node [verification]: %d/%d summaries passed.",
