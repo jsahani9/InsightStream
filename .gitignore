@@ -48,3 +48,10 @@ docker/secrets/
 
 # .md
 Detail.md
+
+# HTML output artifacts
+*.html
+
+# Claude Code
+.agents/
+skills-lock.json
