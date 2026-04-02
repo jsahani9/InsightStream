@@ -251,6 +251,27 @@ Then go to ECS → Service → Update → Force new deployment.
 
 ---
 
+## CI/CD
+
+InsightStream uses **GitHub Actions** for automated deployments. Every push to `main` automatically:
+
+1. Builds Docker images for `linux/amd64`
+2. Pushes both images to AWS ECR
+3. Forces a new ECS deployment
+
+```
+git push → GitHub Actions → ECR push → ECS redeploy → live in ~5 min
+```
+
+Pushes that only change `README.md`, docs, or tests do **not** trigger a deployment.
+
+To set up CI/CD on a fork:
+1. Go to **Settings → Secrets and variables → Actions**
+2. Add `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as repository secrets
+3. That's it — the workflow at `.github/workflows/deploy.yml` handles the rest
+
+---
+
 ## Authors
 
 - [Jasveen Singh Sahani](https://github.com/jsahani9)
